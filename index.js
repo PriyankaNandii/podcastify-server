@@ -10,7 +10,8 @@ const app = express()
 const port = 5000
 app.use(cors({
     origin: [
-        'http://localhost:5173'
+        'http://localhost:5173',
+        'https://podcastify-598b9.web.app'
     ],
     credentials: true
 }));
