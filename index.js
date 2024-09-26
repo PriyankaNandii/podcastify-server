@@ -57,6 +57,16 @@ async function run() {
     try {
         const podcastCollection = client.db("podcastify").collection("podcast");
 
+        app.get('/podcast', async (req, res) => {
+            try {
+                const data = await podcastCollection.find().sort({ _id: -1 }).limit(9).toArray();
+                res.status(200).send(data);
+            } catch (error) {
+                console.error("Error fetching podcasts:", error);
+                res.status(500).send({ message: "Failed to fetch podcasts" });
+            }
+        });
+
         app.post('/upload', upload.fields([
             { name: 'coverImage', maxCount: 1 },
             { name: 'audioFile', maxCount: 1 }
@@ -69,7 +79,7 @@ async function run() {
 
                 let tagsArray = [];
                 if (Array.isArray(tags)) {
-                    tagsArray = tags;  
+                    tagsArray = tags;
                 } else if (typeof tags === 'string') {
                     tagsArray = tags.split(',').map(tag => tag.trim());
                 }
@@ -85,7 +95,7 @@ async function run() {
                     coverImageUrl: coverImage ? `/uploads/images/${coverImage}` : null,
                     audioFileUrl: audioFile ? `/uploads/audios/${audioFile}` : null
                 };
-                
+
                 const result = await podcastCollection.insertOne(podcastData);
                 res.status(201).send({ message: 'Podcast uploaded successfully', data: result });
             } catch (error) {
