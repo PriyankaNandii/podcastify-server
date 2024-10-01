@@ -1,12 +1,10 @@
 const express = require('express')
 const mongoose = require('mongoose');
-const multer = require('multer');
 const cors = require('cors');
-const path = require('path');
 const bodyParser = require('body-parser');
-const fs = require('fs');
 
 const app = express()
+app.use(express.json()); 
 const port = 5000
 app.use(cors({
     origin: [
@@ -15,28 +13,6 @@ app.use(cors({
     ],
     credentials: true
 }));
-
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Multer configuration for file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        if (file.fieldname === 'coverImage') {
-            cb(null, 'uploads/images');
-        } else if (file.fieldname === 'audioFile') {
-            cb(null, 'uploads/audios');
-        }
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname)); // Unique file name
-    }
-});
-
-// Initialize multer
-const upload = multer({ storage: storage });
-
-
-
 
 app.get('/', (req, res) => {
     res.send('Server is running...........!')
@@ -68,37 +44,29 @@ async function run() {
             }
         });
 
-        app.post('/upload', upload.fields([
-            { name: 'coverImage', maxCount: 1 },
-            { name: 'audioFile', maxCount: 1 }
-        ]), async (req, res) => {
+        app.post('/upload', async (req, res) => {
             try {
-                const { title, host, guest, description, releaseDate, category, tags } = req.body;
-
-                const coverImage = req.files['coverImage'] ? req.files['coverImage'][0].filename : null;
-                const audioFile = req.files['audioFile'] ? req.files['audioFile'][0].filename : null;
-
+                const { title, musician, description, coverImage, audioFile, releaseDate, category, tags } = req.body;
+                
                 let tagsArray = [];
                 if (Array.isArray(tags)) {
                     tagsArray = tags;
                 } else if (typeof tags === 'string') {
                     tagsArray = tags.split(',').map(tag => tag.trim());
                 }
-                // Data object to be inserted into MongoDB
-                const podcastData = {
+                
+                const musicData = {
                     title,
-                    host,
-                    guest,
+                    musician,
                     description,
+                    coverImageUrl:coverImage,
+                    audioFileUrl:audioFile,
                     releaseDate: new Date(releaseDate),
                     category,
-                    tags: tagsArray,
-                    coverImageUrl: coverImage ? `/uploads/images/${coverImage}` : null,
-                    audioFileUrl: audioFile ? `/uploads/audios/${audioFile}` : null
+                    tags: tagsArray
                 };
-
-                const result = await podcastCollection.insertOne(podcastData);
-                res.status(201).send({ message: 'Podcast uploaded successfully', data: result });
+                const result = await podcastCollection.insertOne(musicData);
+                res.status(200).send({ message: 'Music uploaded successfully', data: result });
             } catch (error) {
                 console.error(error);
                 res.status(500).send({ error: 'Failed to upload podcast' });
