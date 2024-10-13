@@ -84,7 +84,7 @@ async function run() {
       });
     };
 
-    app.get("/podcast", async (req, res) => {
+    app.get("/podcast",  async (req, res) => {
       try {
         const data = await podcastCollection
           .find()
@@ -111,9 +111,9 @@ async function run() {
       const result = await userCollection.findOne(query);
 
       if (result) {
-        res.send(result);
+        return res.send(result);
       } else {
-        res.status(404).send({ message: "User not found" });
+        return res.status(404).send({ message: "User not found" });
       }
     });
 
@@ -212,6 +212,11 @@ async function run() {
         }
       }
     );
+
+    // It's a starting boundary of nur mohammad palash
+    
+
+    // It's a ending boundary of nur mohammad palash
 
     await client.db("admin").command({ ping: 1 });
     console.log(
