@@ -39,6 +39,8 @@ async function run() {
     try {
         const podcastCollection = client.db("podcastify").collection("podcast");
         const userCollection = client.db("podcastify").collection("users");
+        const announcement = client.db("podcastify").collection("announcement");
+        const notificationReaction = client.db("podcastify").collection("reactions");
 
         // jwt related api
         app.post("/jwt", async (req, res) => {
@@ -64,7 +66,6 @@ async function run() {
             });
         };
 
-<<<<<<< HEAD
 
    
 
@@ -88,7 +89,6 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch podcasts" });
       }
     });
-=======
         // Get All Music
         app.get('/podcast', async (req, res) => {
             try {
@@ -102,7 +102,6 @@ async function run() {
 
         app.get('/manage-podcast', async (req, res) => {
             const { userEmail, page = 0, limit = 5 } = req.query;
->>>>>>> 37cd26fdf0a2f963323f70ddccc06a2e804d57dc
 
             if (!userEmail) {
                 return res.status(400).send({ message: "Email is required" });
@@ -110,20 +109,13 @@ async function run() {
 
             const skip = page * limit;
 
-<<<<<<< HEAD
-      if (result) {
-        return res.send(result);
-      } else {
-        return res.status(404).send({ message: "User not found" });
-      }
-    });
-=======
+  
+    
             try {
                 const podcasts = await podcastCollection.find({ userEmail: userEmail })
                     .skip(skip)
                     .limit(parseInt(limit))
                     .toArray();
->>>>>>> 37cd26fdf0a2f963323f70ddccc06a2e804d57dc
 
                 console.log("Podcasts Retrieved:", podcasts);  // Log the podcasts retrieved
 
@@ -198,25 +190,6 @@ async function run() {
             }
         });
 
-<<<<<<< HEAD
-
-    // delete a user
-    app.delete("/users/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await userCollection.deleteOne(query);
-      res.send(result);
-    });
-
-
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
-    // await client.close();
-  }
-=======
         // Update Podcast
         app.put('/podcast/:id', async (req, res) => {
             const id = req.params.id;
@@ -317,13 +290,48 @@ async function run() {
             res.send(result);
         });
 
+        app.post("/make-announcement", async (req, res) => {
+            const body = req.body;
+            const result = await announcement.insertOne(body);
+            return result.insertedId ? res.send("Success") : res.send("Network error");
+        });
+        
+        app.get("/announcements", async (req, res) => {
+            const result = await announcement.find().toArray();
+             res.send(result);
+        });
+        app.get("/announcements/:id", async (req, res) => {
+            const id = req.params.id;
+            const queryForAnnouncement = new ObjectId(id);
+            const findAnnouncement = await announcement.findOne(queryForAnnouncement);
+            let findPerson = {};
+            const { email } = findAnnouncement;
+            if (email) {
+                const queryForPerson = { email};
+                findPerson = await userCollection.findOne(queryForPerson);
+                return res.send({ findAnnouncement, findPerson });
+            }
+            return res.send({findAnnouncement, findPerson});
+        });
+
+        app.post("/notification-reaction", async (req, res) => {
+            const obj = req.body;
+            const result = await notificationReaction.insertOne(obj);
+            return res.send(result);
+        });
+        app.get("/notification-reaction/:id", async (req, res) => {
+            const { id } = req.params;
+            const result = await notificationReaction.find({ postId: id }).toArray();
+            return res.send(result)
+        })
+        
+
 
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // await client.close();
     }
->>>>>>> 37cd26fdf0a2f963323f70ddccc06a2e804d57dc
 }
 run().catch(console.dir);
 
