@@ -6,8 +6,9 @@ const path = require("path");
 const bodyParser = require("body-parser");
 const fs = require("fs");
 const jwt = require("jsonwebtoken");
+const admin = require("firebase-admin");
+const serviceAccount = require("./firebaseServiceAccountKey.json");
 require("dotenv").config();
-
 const app = express();
 const port = 5000;
 
@@ -39,6 +40,11 @@ const storage = multer.diskStorage({
 
 // Initialize multer
 const upload = multer({ storage: storage });
+
+// Initialize firebase-admin
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
 app.get("/", (req, res) => {
   res.send("Server is running...........!");
@@ -220,11 +226,27 @@ async function run() {
     );
 
     // delete a user
-    app.delete("/users/:id", async (req, res) => {
+    app.delete("/users/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
-      const result = await userCollection.deleteOne(query);
-      res.send(result);
+      try {
+        const user = await userCollection.findOne(query);
+
+        // delete from database
+        const result = await userCollection.deleteOne(query);
+
+        if (user.uid && user.uid.length > 0) {
+          // delete from firebase
+          await admin.auth().deleteUser(user?.uid);
+        } else {
+          console.warn(`User UID is empty or invalid: ${user?.uid}`);
+        }
+
+        res.send(result);
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
     });
 
     await client.db("admin").command({ ping: 1 });
