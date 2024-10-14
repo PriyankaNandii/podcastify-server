@@ -38,6 +38,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         const podcastCollection = client.db("podcastify").collection("podcast");
+        const playlistCollection = client.db("podcastify").collection("playlist");
         const userCollection = client.db("podcastify").collection("users");
 
         // jwt related api
@@ -203,9 +204,89 @@ async function run() {
             }
         })
 
+        // Playlist Start
+
+        // Added playlist
+        app.post('/playlist', async (req, res) => {
+            try {
+                const { music_id, title, user_email } = req.body;
+
+                const query = {
+                    user_email: user_email,
+                    music_id: music_id
+                };
+
+                const existingPlaylist = await playlistCollection.findOne(query);
+
+                if (existingPlaylist) {
+                    return res.send({ message: "Podcast already exists in playlist.", insertedId: null });
+                }
+
+                const playlistData = {
+                    user_email,
+                    music_id,
+                    title
+                };
+                const result = await playlistCollection.insertOne(playlistData);
+                res.status(200).send({ message: 'Playlist Added successfully', data: result });
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ error: 'Failed to add playlist' });
+            }
+        });
+
+        // Manage playlist
+        app.get('/manage-playlist', async (req, res) => {
+            const { userEmail, page = 0, limit = 5 } = req.query;
+
+            if (!userEmail) {
+                return res.status(400).send({ message: "Email is required" });
+            }
+
+            const skip = page * limit;
+
+            try {
+                const playlist = await playlistCollection.find({ user_email: userEmail })
+                    .skip(skip)
+                    .limit(parseInt(limit))
+                    .toArray();
+
+
+                const total = await playlistCollection.countDocuments({ user_email: userEmail });
+
+                res.status(200).send({ playlist, total });
+            } catch (error) {
+                console.error("Error fetching playlist:", error);
+                res.status(500).send({ message: "Failed to fetch playlist" });
+            }
+        });
+
+        // Delete playlist item
+        app.delete('/playlist/:id', async (req, res) => {
+            try {
+                const item_id = new ObjectId(req.params.id);
+                const query = { _id: item_id };
+                const result = await playlistCollection.deleteOne(query);
+                if (!result) return res.status(404).send('Playlist Item not found');
+                res.send({ message: 'PLaylist podcast deleted successfully' });
+            } catch (error) {
+                res.status(500).send('Server error');
+            }
+        });
+
+
+        // Playlist End
+
         // all users data get
         app.get("/users", async (req, res) => {
             const result = await userCollection.find().toArray();
+            res.send(result);
+        });
+
+        // Request Podcaster
+        app.get("/request-podcaster", async (req, res) => {
+            const query = { flag: true };
+            const result = await userCollection.find(query).toArray();
             res.send(result);
         });
 
@@ -236,6 +317,32 @@ async function run() {
                 },
             };
 
+            try {
+                const result = await userCollection.updateOne(query, update);
+                if (result.modifiedCount > 0) {
+                    res.status(200).send({ message: "User updated successfully" });
+                } else {
+                    res
+                        .status(404)
+                        .send({ message: "User not found or no changes made" });
+                }
+            } catch (error) {
+                res.status(500).send({ error: "Error updating user" });
+            }
+        });
+
+        // Podcast Request accept or decline
+        app.put("/users/request/:email", verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const { flag, role } = req.body;
+            const query = { email: email };
+
+            const update = {
+                $set: {
+                    flag: flag,
+                    role: role,
+                },
+            };
             try {
                 const result = await userCollection.updateOne(query, update);
                 if (result.modifiedCount > 0) {
