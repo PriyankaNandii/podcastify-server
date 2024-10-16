@@ -9,7 +9,6 @@ const path = require("path");
 const admin = require("firebase-admin");
 const serviceAccount = require("./firebaseServiceAccountKey.json");
 require("dotenv").config();
-
 const app = express();
 const port = 5000;
 
@@ -40,6 +39,7 @@ const storage = multer.diskStorage({
 });
 
 // Initialize multer
+const videoStorage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // Initialize firebase-admin
@@ -51,7 +51,7 @@ app.get("/", (req, res) => {
   res.send("Server is running...........!");
 });
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, GridFSBucket } = require("mongodb");
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.lyuai16.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 const client = new MongoClient(uri, {
@@ -62,8 +62,12 @@ const client = new MongoClient(uri, {
   },
 });
 
+
+
 async function run() {
     try {
+        // const db = client.db("podcastify");
+        //  bucket = new GridFSBucket(db, { bucketName: "videos" });
         const podcastCollection = client.db("podcastify").collection("podcast");
         const userCollection = client.db("podcastify").collection("users");
         const announcement = client.db("podcastify").collection("announcement");
@@ -604,6 +608,7 @@ async function run() {
                 return res.send(result)
             })
         
+   
 
 
             await client.db("admin").command({ ping: 1 });
