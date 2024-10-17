@@ -67,6 +67,7 @@ async function run() {
     const podcastCollection = client.db("podcastify").collection("podcast");
     const playlistCollection = client.db("podcastify").collection("playlist");
     const userCollection = client.db("podcastify").collection("users");
+    const ReviewsCollection = client.db("podcastify").collection("reviews");
 
     // jwt related api
     app.post("/jwt", async (req, res) => {
@@ -91,6 +92,12 @@ async function run() {
         next();
       });
     };
+
+    // admin stats or analytics
+    app.get("/admin-stats", verifyToken, async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      res.send({ users });
+    });
 
     // Get All Music
     app.get("/podcast", async (req, res) => {
@@ -301,6 +308,13 @@ async function run() {
       }
     });
 
+    // Reviews collection data post
+    app.post("/addReview", async (req, res) => {
+      const usersReview = req.body;
+      const result = await ReviewsCollection.insertOne(usersReview);
+      res.send(result);
+    });
+
     // Manage playlist
     app.get("/manage-playlist", async (req, res) => {
       const { userEmail, page = 0, limit = 5 } = req.query;
@@ -368,6 +382,12 @@ async function run() {
       } else {
         res.status(404).send({ message: "User not found" });
       }
+    });
+
+    // all reviews data get
+    app.get("/allReviews", async (req, res) => {
+      const result = await ReviewsCollection.find().toArray();
+      res.send(result);
     });
 
     // Update user data by email
