@@ -40,6 +40,7 @@ const storage = multer.diskStorage({
 
 // Initialize multer
 const videoStorage = multer.memoryStorage();
+const videoUploader = multer({ videoStorage });
 const upload = multer({ storage: storage });
 
 // Initialize firebase-admin
@@ -61,19 +62,53 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+let bucket;
 
 
 
 async function run() {
     try {
-        // const db = client.db("podcastify");
-        //  bucket = new GridFSBucket(db, { bucketName: "videos" });
+        const db = client.db("podcastify");
+         bucket = new GridFSBucket(db, { bucketName: "videos" });
         const podcastCollection = client.db("podcastify").collection("podcast");
         const userCollection = client.db("podcastify").collection("users");
         const announcement = client.db("podcastify").collection("announcement");
         const notificationReaction = client.db("podcastify").collection("reactions");
         const playlistCollection = client.db("podcastify").collection("playlist");
     
+
+
+        app.post('/video-upload', videoUploader.single('video'), (req, res) => {
+    const videoStream = req.file.buffer;  // Video as buffer
+    const uploadStream = bucket.openUploadStream(req.file.originalname, {
+        contentType: req.file.mimetype
+    });
+
+    // Upload the video file to MongoDB GridFS
+    uploadStream.end(videoStream, () => {
+        res.send('Video uploaded successfully!');
+    });
+        });
+
+        app.get('/video/:filename', (req, res) => {
+    const filename = req.params.filename;
+
+    // Find the video file metadata
+    bucket.find({ filename: filename }).toArray((err, files) => {
+        if (!files || files.length === 0) {
+            return res.status(404).json({ err: 'No video found' });
+        }
+        res.json(files);
+
+        // Set the correct content type for video
+        res.set('Content-Type', files[0].contentType);
+        
+        // Stream the video from GridFS
+        bucket.openDownloadStreamByName(filename).pipe(res);
+    });
+});
+
+
 
         // jwt related api
         app.post("/jwt", async (req, res) => {
@@ -301,7 +336,7 @@ async function run() {
                 console.error(error);
                 res.status(500).send({ error: 'Failed to add playlist' });
             }
-        });
+       });
 
    
 
