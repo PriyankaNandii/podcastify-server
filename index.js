@@ -67,6 +67,7 @@ let bucket;
 
 
 async function run() {
+<<<<<<< HEAD
     try {
         const db = client.db("podcastify");
          bucket = new GridFSBucket(db, { bucketName: "videos" });
@@ -76,6 +77,13 @@ async function run() {
         const notificationReaction = client.db("podcastify").collection("reactions");
         const playlistCollection = client.db("podcastify").collection("playlist");
     
+=======
+  try {
+    const podcastCollection = client.db("podcastify").collection("podcast");
+    const playlistCollection = client.db("podcastify").collection("playlist");
+    const userCollection = client.db("podcastify").collection("users");
+    const ReviewsCollection = client.db("podcastify").collection("reviews");
+>>>>>>> bf3cec62a962c9ea37a5de343cbebeb565d6fb22
 
 
         app.post('/video-upload', videoUploader.single('video'), (req, res) => {
@@ -84,9 +92,46 @@ async function run() {
         contentType: req.file.mimetype
     });
 
+<<<<<<< HEAD
     // Upload the video file to MongoDB GridFS
     uploadStream.end(videoStream, () => {
         res.send('Video uploaded successfully!');
+=======
+    // middlewares
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: "unauthorized access" });
+      }
+      const token = req.headers.authorization?.split(" ")[1];
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "unauthorized  access" });
+        }
+        req.decoded = decoded;
+        next();
+      });
+    };
+
+    // admin stats or analytics
+    app.get("/admin-stats", verifyToken, async (req, res) => {
+      const users = await userCollection.estimatedDocumentCount();
+      res.send({ users });
+    });
+
+    // Get All Music
+    app.get("/podcast", async (req, res) => {
+      try {
+        const data = await podcastCollection
+          .find()
+          .sort({ _id: -1 })
+          .limit(9)
+          .toArray();
+        res.status(200).send(data);
+      } catch (error) {
+        console.error("Error fetching podcasts:", error);
+        res.status(500).send({ message: "Failed to fetch podcasts" });
+      }
+>>>>>>> bf3cec62a962c9ea37a5de343cbebeb565d6fb22
     });
         });
 
@@ -110,6 +155,7 @@ async function run() {
 
 
 
+<<<<<<< HEAD
         // jwt related api
         app.post("/jwt", async (req, res) => {
             const user = req.body;
@@ -117,6 +163,123 @@ async function run() {
                 expiresIn: "5h",
             });
             res.send({ token });
+=======
+    // Update Podcast
+    app.put("/podcast/:id", async (req, res) => {
+      const id = req.params.id;
+      try {
+        const filter = { _id: new ObjectId(id) };
+        const options = { upsert: true };
+        const {
+          title,
+          musician,
+          description,
+          coverImage,
+          audioFile,
+          releaseDate,
+          category,
+          userEmail,
+          tags,
+        } = req.body;
+
+        let tagsArray = [];
+        if (Array.isArray(tags)) {
+          tagsArray = tags;
+        } else if (typeof tags === "string") {
+          tagsArray = tags.split(",").map((tag) => tag.trim());
+        }
+
+        const musicData = {
+          title,
+          musician,
+          description,
+          coverImageUrl: coverImage,
+          audioFileUrl: audioFile,
+          releaseDate: new Date(releaseDate),
+          category,
+          userEmail,
+          tags: tagsArray,
+        };
+        // console.log(musicData);
+        const updateData = {
+          $set: musicData,
+        };
+        // console.log(updateData);
+        const result = await podcastCollection.updateOne(
+          filter,
+          updateData,
+          options
+        );
+        res.send(result);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: "Failed to upload podcast" });
+      }
+    });
+
+    // Playlist Start
+
+    // Added playlist
+    app.post("/playlist", async (req, res) => {
+      try {
+        const { music_id, title, user_email } = req.body;
+
+        const query = {
+          user_email: user_email,
+          music_id: music_id,
+        };
+
+        const existingPlaylist = await playlistCollection.findOne(query);
+
+        if (existingPlaylist) {
+          return res.send({
+            message: "Podcast already exists in playlist.",
+            insertedId: null,
+          });
+        }
+
+        const playlistData = {
+          user_email,
+          music_id,
+          title,
+        };
+        const result = await playlistCollection.insertOne(playlistData);
+        res
+          .status(200)
+          .send({ message: "Playlist Added successfully", data: result });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: "Failed to add playlist" });
+      }
+    });
+
+    // Reviews collection data post
+    app.post("/addReview", async (req, res) => {
+      const usersReview = req.body;
+      const result = await ReviewsCollection.insertOne(usersReview);
+      res.send(result);
+    });
+
+    // Manage playlist
+    app.get("/manage-playlist", async (req, res) => {
+      const { userEmail, page = 0, limit = 5 } = req.query;
+
+      if (!userEmail) {
+        return res.status(400).send({ message: "Email is required" });
+      }
+
+      const skip = page * limit;
+
+      try {
+        const playlist = await playlistCollection
+          .find({ user_email: userEmail })
+          .skip(skip)
+          .limit(parseInt(limit))
+          .toArray();
+
+        const total = await playlistCollection.countDocuments({
+          user_email: userEmail,
+>>>>>>> bf3cec62a962c9ea37a5de343cbebeb565d6fb22
         });
 
         // middlewares
@@ -167,9 +330,23 @@ async function run() {
 
                 console.log("Podcasts Retrieved:", podcasts); // Log the podcasts retrieved
 
+<<<<<<< HEAD
                 const total = await podcastCollection.countDocuments({
                     userEmail: userEmail,
                 });
+=======
+    // all reviews data get
+    app.get("/allReviews", async (req, res) => {
+      const result = await ReviewsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Update user data by email
+    app.put("/users/email/:email", verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const { name, username, phoneNumber } = req.body;
+      const query = { email: email };
+>>>>>>> bf3cec62a962c9ea37a5de343cbebeb565d6fb22
 
                 res.status(200).send({ podcasts, total });
             } catch (error) {
