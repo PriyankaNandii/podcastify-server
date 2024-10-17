@@ -76,6 +76,7 @@ async function run() {
         const notificationReaction = client.db("podcastify").collection("reactions");
         const playlistCollection = client.db("podcastify").collection("playlist");   
         const ReviewsCollection = client.db("podcastify").collection("reviews");
+        const subscribersCollection = client.db("podcastify").collection("subscriber");
 
 
 
@@ -809,11 +810,26 @@ async function run() {
                 const result = await notificationReaction.insertOne(obj);
                 return res.send(result);
             });
-            app.get("/notification-reaction/:id", async (req, res) => {
-                const { id } = req.params;
-                const result = await notificationReaction.find({ postId: id }).toArray();
-                return res.send(result)
-            })
+        app.get("/notification-reaction/:id", async (req, res) => {
+            const { id } = req.params;
+            const result = await notificationReaction.find({ postId: id }).toArray();
+            return res.send(result)
+        });
+
+        app.post("/subscriptions", async (req, res) => {
+            const data = req.body;
+            console.log(data);
+            const { podcasterId, subscriberEmail } = data;
+            const ifAlreadySubscribed = await subscribersCollection.findOne({ podcasterId, subscriberEmail });
+            if (ifAlreadySubscribed) {
+                res.send("Already subscribed");
+                return
+            }
+            const result = await subscribersCollection.insertOne(data);
+            console.log(podcasterId, subscriberEmail);
+            return res.send(result)
+
+        })
         
    
 
