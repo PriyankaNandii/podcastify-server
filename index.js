@@ -826,9 +826,15 @@ async function run() {
                 return
             }
             const result = await subscribersCollection.insertOne(data);
-            console.log(podcasterId, subscriberEmail);
             return res.send(result)
 
+        })
+        app.get("/mySubscription/:email", async (req, res) => {
+            const email = req.params.email;
+            
+            const result = await subscribersCollection.find({subscriberEmail: email}).toArray()
+            
+            return res.send(result)
         })
         
    
