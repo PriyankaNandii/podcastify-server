@@ -153,6 +153,7 @@ async function run() {
       });
       res.send({ token });
     });
+
     // Update Podcast
     app.put("/podcast/:id", async (req, res) => {
       const id = req.params.id;
@@ -209,7 +210,7 @@ async function run() {
     // Playlist Start
 
     // Added playlist
-    app.post("/playlist", async (req, res) => {
+    /* app.post("/playlist", async (req, res) => {
       try {
         const { music_id, title, user_email } = req.body;
 
@@ -240,7 +241,7 @@ async function run() {
         console.error(error);
         res.status(500).send({ error: "Failed to add playlist" });
       }
-    });
+    }); */
 
     // Reviews collection data post
     app.post("/addReview", async (req, res) => {
@@ -512,9 +513,28 @@ async function run() {
       res.send({ users });
     });
 
+    // get all podcasts
     app.get("/podcast", async (req, res) => {
       try {
-        const data = await podcastCollection.find().sort({ _id: -1 }).toArray();
+        const { search, category, language } = req.query;
+        const query = {};
+
+        if (search) {
+          query.title = { $regex: search, $options: "i" };
+        }
+
+        if (category) {
+          query.category = category;
+        }
+
+        if (language) {
+          query.tags = { $regex: language, $options: "i" };
+        }
+        const data = await podcastCollection
+          .find(query)
+          .sort({ _id: -1 })
+          .toArray();
+
         res.status(200).send(data);
       } catch (error) {
         console.error("Error fetching podcasts:", error);
@@ -523,7 +543,7 @@ async function run() {
     });
 
     // Get All Music
-    app.get("/podcast", async (req, res) => {
+    /* app.get("/podcast", async (req, res) => {
       try {
         const data = await podcastCollection.find().sort({ _id: -1 }).toArray();
         res.status(200).send(data);
@@ -554,7 +574,7 @@ async function run() {
         console.error(error);
         res.status(500).send({ error: "Failed to add playlist" });
       }
-    });
+    }); */
 
     // Manage playlist
     app.get("/manage-playlist", async (req, res) => {
