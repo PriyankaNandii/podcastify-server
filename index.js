@@ -523,6 +523,10 @@ async function run() {
           query.title = { $regex: search, $options: "i" };
         }
 
+        if (category) {
+          query.category = category;
+        }
+
         if (language) {
           query.tags = { $regex: language, $options: "i" };
         }
