@@ -542,6 +542,16 @@ async function run() {
       }
     });
 
+    // sort by vote count des
+    app.get("/trendingPodcasts", async (req, res) => {
+      const { upVote } = req.query;
+      const cursor = podcastCollection.find().sort({
+        upVote: upVote || "desc",
+      });
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // Get All Music
     /* app.get("/podcast", async (req, res) => {
       try {
