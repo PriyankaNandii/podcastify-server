@@ -818,22 +818,26 @@ async function run() {
 
         app.post("/subscriptions", async (req, res) => {
             const data = req.body;
-            console.log(data);
             const { podcasterId, subscriberEmail } = data;
             const ifAlreadySubscribed = await subscribersCollection.findOne({ podcasterId, subscriberEmail });
+            
             if (ifAlreadySubscribed) {
                 res.send("Already subscribed");
                 return
             }
             const result = await subscribersCollection.insertOne(data);
-            return res.send(result)
+            return res.send({result})
 
         })
+
+        app.get("/totalSubscriber", async (req, res) => {
+            const totalSubscriber = await subscribersCollection.find().toArray();
+            res.send(totalSubscriber);
+        });
+
         app.get("/mySubscription/:email", async (req, res) => {
-            const email = req.params.email;
-            
-            const result = await subscribersCollection.find({subscriberEmail: email}).toArray()
-            
+            const email = req.params.email;;      
+            const result = await subscribersCollection.find({ subscriberEmail: email }).toArray();
             return res.send(result)
         })
         
