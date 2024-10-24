@@ -152,7 +152,7 @@ async function run() {
     });
 
     // Update Podcast
-    app.put("/podcast/:id", async (req, res) => {
+    /* app.put("/podcast/:id", async (req, res) => {
       const id = req.params.id;
       try {
         const filter = { _id: new ObjectId(id) };
@@ -202,7 +202,7 @@ async function run() {
         console.error(error);
         res.status(500).send({ error: "Failed to upload podcast" });
       }
-    });
+    }); */
 
     // Playlist Start
 
@@ -539,6 +539,16 @@ async function run() {
       }
     });
 
+    // sort by vote count des
+    app.get("/trendingPodcasts", async (req, res) => {
+      const { upVote } = req.query;
+      const cursor = podcastCollection.find().sort({
+        upVote: upVote || "desc",
+      });
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
     // Get All Music
     /* app.get("/podcast", async (req, res) => {
       try {
@@ -769,6 +779,35 @@ async function run() {
         }
       } catch (error) {
         res.status(500).send({ error: "Error updating user" });
+      }
+    });
+
+    // Upvote to a podcast
+    app.put("/voteCount/:id", async (req, res) => {
+      const id = req.params.id;
+      const emailUser = req.body.emailUser;
+      const query = { _id: new ObjectId(id) };
+
+      try {
+        const findPodcast = await podcastCollection.findOne(query);
+
+        if (findPodcast.voters && findPodcast.voters.includes(emailUser)) {
+          return;
+        }
+
+        const updatedDoc = {
+          $inc: { upVote: 1 },
+          $push: { voters: emailUser },
+        };
+
+        const result = await podcastCollection.updateOne(query, {
+          $inc: { upVote: 1 },
+          $push: { voters: emailUser },
+        });
+
+        res.status(200).json(result);
+      } catch (error) {
+        console.error("Error while updating vote count:", error);
       }
     });
 
