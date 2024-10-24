@@ -71,14 +71,11 @@ async function run() {
     const podcastCollection = client.db("podcastify").collection("podcast");
     const userCollection = client.db("podcastify").collection("users");
     const announcement = client.db("podcastify").collection("announcement");
-    const notificationReaction = client
-      .db("podcastify")
-      .collection("reactions");
+    const notificationReaction = client.db("podcastify").collection("reactions");
     const playlistCollection = client.db("podcastify").collection("playlist");
     const ReviewsCollection = client.db("podcastify").collection("reviews");
-    const subscribersCollection = client
-      .db("podcastify")
-      .collection("subscriber");
+      const subscribersCollection = client.db("podcastify").collection("subscriber");
+      const contactMessageCollection = client.db("podcastify").collection("contact-message");
 
     app.post("/video-upload", videoUploader.single("video"), (req, res) => {
       const videoStream = req.file.buffer; // Video as buffer
@@ -879,6 +876,10 @@ async function run() {
       const result = await subscribersCollection.insertOne(data);
       return res.send(result);
     });
+    app.get("/totalSubscriber", async (req, res) => {
+      const result = await subscribersCollection.find().toArray();
+      res.send(result)
+    })
     app.get("/mySubscription/:email", async (req, res) => {
       const email = req.params.email;
 
@@ -888,6 +889,17 @@ async function run() {
 
       return res.send(result);
     });
+      //   send message
+      app.post("/contact-message", async (req, res) => {
+          const data = req.body;
+          const result = await contactMessageCollection.insertOne(data);
+          res.send(result);
+      })
+
+      app.get("/contact-message", async (req, res) => {
+          const result = await contactMessageCollection.find().toArray();
+          res.send(result);
+      })
 
     await client.db("admin").command({ ping: 1 });
     console.log(
