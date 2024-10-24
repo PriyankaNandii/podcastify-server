@@ -71,11 +71,17 @@ async function run() {
     const podcastCollection = client.db("podcastify").collection("podcast");
     const userCollection = client.db("podcastify").collection("users");
     const announcement = client.db("podcastify").collection("announcement");
-    const notificationReaction = client.db("podcastify").collection("reactions");
+    const notificationReaction = client
+      .db("podcastify")
+      .collection("reactions");
     const playlistCollection = client.db("podcastify").collection("playlist");
     const ReviewsCollection = client.db("podcastify").collection("reviews");
-      const subscribersCollection = client.db("podcastify").collection("subscriber");
-      const contactMessageCollection = client.db("podcastify").collection("contact-message");
+    const subscribersCollection = client
+      .db("podcastify")
+      .collection("subscriber");
+    const contactMessageCollection = client
+      .db("podcastify")
+      .collection("contact-message");
 
     app.post("/video-upload", videoUploader.single("video"), (req, res) => {
       const videoStream = req.file.buffer; // Video as buffer
@@ -326,17 +332,11 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch podcasts" });
       }
     });
+
     // all reviews data get
     app.get("/allReviews", async (req, res) => {
       const result = await ReviewsCollection.find().toArray();
       res.send(result);
-    });
-
-    // Update user data by email
-    app.put("/users/email/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const { name, username, phoneNumber } = req.body;
-      const query = { email: email };
     });
 
     // Upload Podcast
@@ -549,6 +549,32 @@ async function run() {
       res.send(result);
     });
 
+    // categories
+    app.get("/categories", async (req, res) => {
+      try {
+        const podcasts = await podcastCollection.find().toArray();
+        const categories = [
+          ...new Map(
+            podcasts.map((podcast) => [podcast.category, podcast.coverImageUrl])
+          ),
+        ].map(([category, coverImageUrl]) => ({
+          category,
+          coverImageUrl,
+        }));
+        res.status(200).json(categories);
+      } catch (error) {
+        console.error("Error fetching categories:", error.stack);
+        res.status(500).json({ message: "Failed to fetch categories" });
+      }
+    });
+
+    app.get("/categories/:category", async (req, res) => {
+      console.log(req.params.email);
+      const result = await podcastCollection
+        .find({ category: req.params.category })
+        .toArray();
+      res.send(result);
+    });
     // Get All Music
     /* app.get("/podcast", async (req, res) => {
       try {
@@ -637,47 +663,6 @@ async function run() {
       res.send(result);
     });
 
-    // get single user data
-    app.get("/users/email/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email }; // Querying by email
-      const result = await userCollection.findOne(query);
-
-      if (result) {
-        res.send(result);
-      } else {
-        res.status(404).send({ message: "User not found" });
-      }
-    });
-
-    // Update user data by email
-    app.put("/users/email/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const { name, username, phoneNumber } = req.body;
-      const query = { email: email };
-
-      const update = {
-        $set: {
-          name: name,
-          username: username,
-          phoneNumber: phoneNumber,
-        },
-      };
-
-      try {
-        const result = await userCollection.updateOne(query, update);
-        if (result.modifiedCount > 0) {
-          res.status(200).send({ message: "User updated successfully" });
-        } else {
-          res
-            .status(404)
-            .send({ message: "User not found or no changes made" });
-        }
-      } catch (error) {
-        res.status(500).send({ error: "Error updating user" });
-      }
-    });
-
     // Podcast Request accept or decline
     app.put("/users/request/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -742,7 +727,7 @@ async function run() {
     });
 
     // get single user data
-    app.get("/users/email/:email", verifyToken, async (req, res) => {
+    app.get("/users/email/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email }; // Querying by email
       const result = await userCollection.findOne(query);
@@ -755,7 +740,7 @@ async function run() {
     });
 
     // Update user data by email
-    app.put("/users/email/:email", verifyToken, async (req, res) => {
+    app.put("/users/email/:email", async (req, res) => {
       const email = req.params.email;
       const { name, username, phoneNumber } = req.body;
       const query = { email: email };
@@ -878,8 +863,8 @@ async function run() {
     });
     app.get("/totalSubscriber", async (req, res) => {
       const result = await subscribersCollection.find().toArray();
-      res.send(result)
-    })
+      res.send(result);
+    });
     app.get("/mySubscription/:email", async (req, res) => {
       const email = req.params.email;
 
@@ -889,17 +874,17 @@ async function run() {
 
       return res.send(result);
     });
-      //   send message
-      app.post("/contact-message", async (req, res) => {
-          const data = req.body;
-          const result = await contactMessageCollection.insertOne(data);
-          res.send(result);
-      })
+    //   send message
+    app.post("/contact-message", async (req, res) => {
+      const data = req.body;
+      const result = await contactMessageCollection.insertOne(data);
+      res.send(result);
+    });
 
-      app.get("/contact-message", async (req, res) => {
-          const result = await contactMessageCollection.find().toArray();
-          res.send(result);
-      })
+    app.get("/contact-message", async (req, res) => {
+      const result = await contactMessageCollection.find().toArray();
+      res.send(result);
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log(
