@@ -656,36 +656,81 @@ async function run() {
       res.send(result);
     });
 
-    // Request Podcaster
-    app.get("/request-podcaster", async (req, res) => {
-      const query = { flag: true };
-      const result = await userCollection.find(query).toArray();
-      res.send(result);
+    // Request to be a Podcaster
+    app.post("/request-podcaster", async (req, res) => {
+      try {
+        const { email } = req.body;
+        const query = { email };
+        const user = await userCollection.findOne(query);
+
+        if (user.isPodcasterRequested) {
+          return res.send({ success: false, message: "Already requested" });
+        }
+        const updateDoc = { $set: { isPodcasterRequested: true } };
+        const result = await userCollection.updateOne(query, updateDoc);
+
+        res.send({ success: true, message: "Request submitted" });
+      } catch (error) {
+        res.status(500).send({ success: false, message: "Server error" });
+      }
+    });
+
+    // Get Requested Podcasters
+    app.get("/podcaster-requests", verifyToken, async (req, res) => {
+      try {
+        const query = { isPodcasterRequested: true };
+        const result = await userCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res
+          .status(500)
+          .send({ success: false, message: "Server error", error });
+      }
     });
 
     // Podcast Request accept or decline
     app.put("/users/request/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const { flag, role } = req.body;
-      const query = { email: email };
 
-      const update = {
-        $set: {
-          flag: flag,
-          role: role,
-        },
-      };
       try {
-        const result = await userCollection.updateOne(query, update);
-        if (result.modifiedCount > 0) {
-          res.status(200).send({ message: "User updated successfully" });
-        } else {
-          res
+        const query = { email };
+        const user = await userCollection.findOne(query);
+
+        if (!user) {
+          return res
             .status(404)
-            .send({ message: "User not found or no changes made" });
+            .send({ success: false, message: "User not found" });
         }
+
+        let updateDoc;
+        if (flag === "accept") {
+          // Accept the request and update role to 'podcaster'
+          updateDoc = {
+            $set: { role: "podcaster", isPodcasterRequested: false },
+          };
+        } else if (flag === "decline") {
+          // Decline the request and reset role to 'user'
+          updateDoc = { $set: { role: "user", isPodcasterRequested: false } };
+        } else {
+          return res
+            .status(400)
+            .send({ success: false, message: "Invalid action" });
+        }
+
+        // Update user role and status
+        const result = await userCollection.updateOne(query, updateDoc);
+
+        res.send({
+          success: true,
+          message: `User has been ${
+            flag === "accept" ? "accepted" : "declined"
+          } as podcaster`,
+        });
       } catch (error) {
-        res.status(500).send({ error: "Error updating user" });
+        res
+          .status(500)
+          .send({ success: false, message: "Server error", error });
       }
     });
 
