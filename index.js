@@ -876,6 +876,10 @@ async function run() {
       const result = await subscribersCollection.insertOne(data);
       return res.send(result);
     });
+    app.get("/totalSubscriber", async (req, res) => {
+      const result = await subscribersCollection.find().toArray();
+      res.send(result)
+    })
     app.get("/mySubscription/:email", async (req, res) => {
       const email = req.params.email;
 
