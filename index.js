@@ -329,17 +329,11 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch podcasts" });
       }
     });
+
     // all reviews data get
     app.get("/allReviews", async (req, res) => {
       const result = await ReviewsCollection.find().toArray();
       res.send(result);
-    });
-
-    // Update user data by email
-    app.put("/users/email/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const { name, username, phoneNumber } = req.body;
-      const query = { email: email };
     });
 
     // Upload Podcast
@@ -552,6 +546,32 @@ async function run() {
       res.send(result);
     });
 
+    // categories
+    app.get("/categories", async (req, res) => {
+      try {
+        const podcasts = await podcastCollection.find().toArray();
+        const categories = [
+          ...new Map(
+            podcasts.map((podcast) => [podcast.category, podcast.coverImageUrl])
+          ),
+        ].map(([category, coverImageUrl]) => ({
+          category,
+          coverImageUrl,
+        }));
+        res.status(200).json(categories);
+      } catch (error) {
+        console.error("Error fetching categories:", error.stack);
+        res.status(500).json({ message: "Failed to fetch categories" });
+      }
+    });
+
+    app.get("/categories/:category", async (req, res) => {
+      console.log(req.params.email);
+      const result = await podcastCollection
+        .find({ category: req.params.category })
+        .toArray();
+      res.send(result);
+    });
     // Get All Music
     /* app.get("/podcast", async (req, res) => {
       try {
@@ -640,47 +660,6 @@ async function run() {
       res.send(result);
     });
 
-    // get single user data
-    app.get("/users/email/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { email: email }; // Querying by email
-      const result = await userCollection.findOne(query);
-
-      if (result) {
-        res.send(result);
-      } else {
-        res.status(404).send({ message: "User not found" });
-      }
-    });
-
-    // Update user data by email
-    app.put("/users/email/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const { name, username, phoneNumber } = req.body;
-      const query = { email: email };
-
-      const update = {
-        $set: {
-          name: name,
-          username: username,
-          phoneNumber: phoneNumber,
-        },
-      };
-
-      try {
-        const result = await userCollection.updateOne(query, update);
-        if (result.modifiedCount > 0) {
-          res.status(200).send({ message: "User updated successfully" });
-        } else {
-          res
-            .status(404)
-            .send({ message: "User not found or no changes made" });
-        }
-      } catch (error) {
-        res.status(500).send({ error: "Error updating user" });
-      }
-    });
-
     // Podcast Request accept or decline
     app.put("/users/request/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -745,7 +724,7 @@ async function run() {
     });
 
     // get single user data
-    app.get("/users/email/:email", verifyToken, async (req, res) => {
+    app.get("/users/email/:email", async (req, res) => {
       const email = req.params.email;
       const query = { email: email }; // Querying by email
       const result = await userCollection.findOne(query);
@@ -758,7 +737,7 @@ async function run() {
     });
 
     // Update user data by email
-    app.put("/users/email/:email", verifyToken, async (req, res) => {
+    app.put("/users/email/:email", async (req, res) => {
       const email = req.params.email;
       const { name, username, phoneNumber } = req.body;
       const query = { email: email };
