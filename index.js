@@ -8,6 +8,14 @@ const multer = require("multer");
 const path = require("path");
 const admin = require("firebase-admin");
 const serviceAccount = require("./firebaseServiceAccountKey.json");
+const AgoraRTC = require("agora-access-token");
+const { RtcTokenBuilder, RtcRole } = require("agora-access-token");
+const WebSocket = require("ws");
+
+const APP_ID = "7ff77a961dac45babe0ad7f5231a0b86";
+const APP_CERTIFICATE = "2e023302dff44321a2291fcdca81706b";
+
+
 require("dotenv").config();
 const app = express();
 const port = 5000;
@@ -21,6 +29,10 @@ app.use(
     credentials: true,
   })
 );
+
+const server = app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`);
+});
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -931,6 +943,91 @@ async function run() {
       res.send(result);
     });
 
+    // ----------Podcast Live Streaming start-----------
+
+    let livePodcasters = [];
+    const wss = new WebSocket.Server({ noServer: true });
+
+    wss.on("connection", (ws) => {
+      ws.send(JSON.stringify({ type: "live-podcasters", livePodcasters }));
+
+      ws.on("close", () => {
+        // console.log("Client disconnected");
+      });
+    });
+
+    server.on("upgrade", (request, socket, head) => {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+    });
+
+    // API to generate token
+    const generateToken = (req, res) => {
+      const { channelName, uid, role } = req.query;
+
+      // Role can be "publisher" or "subscriber"
+      const rtcRole = role === 'publisher' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+      const expirationTimeInSeconds = 3600;
+      const currentTimeInSeconds = Math.floor(Date.now() / 1000);
+      const expirationTimestamp = currentTimeInSeconds + expirationTimeInSeconds;
+
+      // Build the token
+      const token = RtcTokenBuilder.buildTokenWithUid(APP_ID, APP_CERTIFICATE, channelName, uid, rtcRole, expirationTimestamp);
+      res.json({ token });
+    };
+
+    app.get('/generate-token', generateToken);
+
+    // API to added podcaster to the list
+    app.post("/start-broadcast", (req, res) => {
+      const { channelName, uid } = req.body;
+      console.log('Start:', channelName, uid);
+      if (!livePodcasters.some(podcaster => podcaster.uid === uid)) {
+        livePodcasters.push({ channelName, uid });
+
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: "new-broadcaster", channelName, uid }));
+          }
+        });
+      }
+
+      res.status(200).send({ livePodcasters });
+    });
+
+    // API to remove podcaster from the list
+    app.post("/stop-broadcast", (req, res) => {
+      try {
+        const { channelName, uid } = req.body;
+        if (!channelName || !uid) {
+          return res.status(400).json({ message: "Missing channelName or uid" });
+        }
+
+        livePodcasters = livePodcasters.filter(
+          (podcaster) => podcaster.uid !== uid || podcaster.channelName !== channelName
+        );
+
+        const message = {
+          type: "remove-broadcaster",
+          channelName,
+          uid,
+        };
+        wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify(message));
+          }
+        });
+
+        res.status(200).send({ message: "Podcaster removed from the listener's list" });
+      } catch (error) {
+        console.error("Error stopping broadcast:", error);
+        res.status(500).json({ message: "Internal server error" });
+      }
+    });
+    // ----------Podcast Live Streaming start-----------
+
+
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
@@ -940,7 +1037,3 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
-});
