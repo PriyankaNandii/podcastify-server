@@ -982,7 +982,7 @@ async function run() {
     // API to added podcaster to the list
     app.post("/start-broadcast", (req, res) => {
       const { channelName, uid } = req.body;
-      console.log('Start:', channelName, uid);
+      
       if (!livePodcasters.some(podcaster => podcaster.uid === uid)) {
         livePodcasters.push({ channelName, uid });
 
