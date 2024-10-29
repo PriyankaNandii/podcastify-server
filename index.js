@@ -15,7 +15,6 @@ const WebSocket = require("ws");
 const APP_ID = "7ff77a961dac45babe0ad7f5231a0b86";
 const APP_CERTIFICATE = "2e023302dff44321a2291fcdca81706b";
 
-
 require("dotenv").config();
 const app = express();
 const port = 5000;
@@ -967,28 +966,39 @@ async function run() {
       const { channelName, uid, role } = req.query;
 
       // Role can be "publisher" or "subscriber"
-      const rtcRole = role === 'publisher' ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+      const rtcRole =
+        role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
       const expirationTimeInSeconds = 3600;
       const currentTimeInSeconds = Math.floor(Date.now() / 1000);
-      const expirationTimestamp = currentTimeInSeconds + expirationTimeInSeconds;
+      const expirationTimestamp =
+        currentTimeInSeconds + expirationTimeInSeconds;
 
       // Build the token
-      const token = RtcTokenBuilder.buildTokenWithUid(APP_ID, APP_CERTIFICATE, channelName, uid, rtcRole, expirationTimestamp);
+      const token = RtcTokenBuilder.buildTokenWithUid(
+        APP_ID,
+        APP_CERTIFICATE,
+        channelName,
+        uid,
+        rtcRole,
+        expirationTimestamp
+      );
       res.json({ token });
     };
 
-    app.get('/generate-token', generateToken);
+    app.get("/generate-token", generateToken);
 
     // API to added podcaster to the list
     app.post("/start-broadcast", (req, res) => {
       const { channelName, uid } = req.body;
-      console.log('Start:', channelName, uid);
-      if (!livePodcasters.some(podcaster => podcaster.uid === uid)) {
+      console.log("Start:", channelName, uid);
+      if (!livePodcasters.some((podcaster) => podcaster.uid === uid)) {
         livePodcasters.push({ channelName, uid });
 
-        wss.clients.forEach(client => {
+        wss.clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: "new-broadcaster", channelName, uid }));
+            client.send(
+              JSON.stringify({ type: "new-broadcaster", channelName, uid })
+            );
           }
         });
       }
@@ -1001,11 +1011,14 @@ async function run() {
       try {
         const { channelName, uid } = req.body;
         if (!channelName || !uid) {
-          return res.status(400).json({ message: "Missing channelName or uid" });
+          return res
+            .status(400)
+            .json({ message: "Missing channelName or uid" });
         }
 
         livePodcasters = livePodcasters.filter(
-          (podcaster) => podcaster.uid !== uid || podcaster.channelName !== channelName
+          (podcaster) =>
+            podcaster.uid !== uid || podcaster.channelName !== channelName
         );
 
         const message = {
@@ -1013,20 +1026,21 @@ async function run() {
           channelName,
           uid,
         };
-        wss.clients.forEach(client => {
+        wss.clients.forEach((client) => {
           if (client.readyState === WebSocket.OPEN) {
             client.send(JSON.stringify(message));
           }
         });
 
-        res.status(200).send({ message: "Podcaster removed from the listener's list" });
+        res
+          .status(200)
+          .send({ message: "Podcaster removed from the listener's list" });
       } catch (error) {
         console.error("Error stopping broadcast:", error);
         res.status(500).json({ message: "Internal server error" });
       }
     });
     // ----------Podcast Live Streaming start-----------
-
 
     await client.db("admin").command({ ping: 1 });
     console.log(
