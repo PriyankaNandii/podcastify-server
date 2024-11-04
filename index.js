@@ -25,10 +25,12 @@ app.use(express.json());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://podcastify-598b9.web.app"],
+    origin: ["http://localhost:5173", "https://podcastify-598b9.web.app", "*"],
     credentials: true,
+    methods: ["GET", "PUT", "POST", "PATCH", "DELETE"]
   })
 );
+
 
 const server = app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
@@ -922,6 +924,12 @@ async function run() {
       const result = await subscribersCollection.find().toArray();
       res.send(result);
     });
+    app.delete("/unsubscribed", async (req, res) => {
+      const queryData = req.query
+      console.log(queryData);
+      const result = await subscribersCollection.deleteOne(queryData)
+      res.send(result);
+    })
     app.get("/mySubscription/:email", async (req, res) => {
       const email = req.params.email;
 
